@@ -1,2 +1,2 @@
-# DataReport Folder
-_Location to place documents describing results of data exploration_
+# Carpeta DataReport.
+Lugar para colocar los documentos que describen los resultados de la exploración de datos.
