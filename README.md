@@ -1,0 +1,32 @@
+# **Resumen del proyecto**
+
+Con los recientes avances en la capacidad de las GPU y las redes neuronales convolucionales, la visión por medio de un computador ha ganado un gran reconocimiento. Los computadores nos dan ahora una mayor precisión que los humanos para imágenes que son bastante complejas y tienen características que no son fácilmente diferenciables a simple vista, pero de nuevo los computadores tienen la destreza de averiguar los detalles de forma rigurosa.
+Por esta razón se buscó una forma de poder clasificar unas fotos de cultivos con diferentes características que pueden pronosticar la salud de las siembras por medio de cuatro clasificadores con diferentes niveles de complejidad. 
+Sobre el Dataset 
+El conjunto de datos seleccionado es “Agriculture-Vision", tomado del portal de Amazon, el cual proporciona imágenes de 3.432 campos de cultivos de maíz y soya con nueve (9) características etiquetadas por agrónomos.
+Este conjunto de datos está compuesto por:
+- 94.986 imágenes 
+- 70.500 de Entrenamiento 
+- 24,486 de Prueba
+- 512x512 pixeles
+- Cada imagen de campo contiene tres canales de color.
+
+Dataset: https://registry.opendata.aws/intelinair_agriculture_vision/ 
+
+# **Insights:**
+
+Gracias al procesamiento que fue realizado con TensorFlow y la lectura de las imágenes por medio de TFRecords se pudo encontrar que las etiquetas con las cuales se deben trabajar las clasificaciones de imágenes son 9 storm damage, drydown, endrow, wáter, nutrient deficient, double plant, waterway, weed cluster, planter skip. 
+Para cada sección del campo agrícola fotografiado se presentan cinco variantes de la misma imagen distribuidas en los siguientes grupos: 
+1.  RGB: Clasificada en el grupo basado en la adicción de colores lumínicos primarios (rojo, verde y azul). 
+2.  NIR: Near infrared, correspondiente a la imagen del espectro infrarrojo. 
+3.  Field labels: Contiene cuadriláteros demarcando el área de la fotografía que presenta una afectación característica en particular. 
+4.  Field bounds: Contiene la imagen bicromática que discrimina que porción del área de la fotografía corresponde a cultivo y cual a algo diferente. (i.e. Una Carretera)
+
+# **Construcción del modelo y su desempeño:**
+
+El primer modelo creado fue una regresión logística multiclase, tomando como matriz X los pixeles de una imagen RGB transformada a escala de grises, la cual nos muestra en una primera iteración un acurracy de 11%. Para poder mejorar este acurracy se realiza un escalamiento de cada una de las características de las imágenes subiendo su acurracy al 19% donde se puede observar, waterway y wáter son los más fáciles de clasificar para la regresión logísticas mientras que weed_cluster, storm_damage, nutrient_efficiency, double_plant son más difíciles ya que su precisión de la clasificación fue menor para estas etiquetas.
+El siguiente modelo creado con complejidad media fue Random Forest, el cual tuvo un total de 21 iteraciones tomando la imagen RGB, pero con el fin de eliminar el overfitting que se genero en la primera iteración, se realizaron diferentes variaciones, como el número de árboles, la profundidad y la combinación de canales de colores dentro de la imagen. Dentro de la última variación del random forest se realizaron estrategias como adición de característica la Imagen NIR y se adicionándola como característica al Dataset; otra estrategia consta de utilizar la imagen “bounds” que nos indica que parte de la imagen es un cultivo y cual no esto ayudaría a eliminar el ruido de la imagen. Con estas variaciones se pudo comprobar que la mejor iteración fue la 15 con 25 arboles y una combinación de RGB + BOUNDS dando un acurracy en test del 45%
+Finalmente, los modelos mas complejos se realizaron con CNN Para las funciones de activación de las capas iniciales se utilizó relu y para la capa de salida se utilizó la función softmax. También se incluyeron algunas capas de MaxPoolin2D con strides(2,2) yel tamaño del kernel fue de 3 x 3, Finalmente se utilizó una función de pérdida Sparse Categórical Crossentropy, ya que las variables salidas se serializaron mediante el método OrdinalEncoder de sklearn, y para la métrica se utilizó Sparse Categorical Accuracy.
+Para el uso del modelo se intentó crear una línea base con la información correspondiente a las imágenes RGB de tres canales. Un segundo experimento se llevó a cabo incrementando la información suministrada al modelo con la introducción de más características y combinación de las mismas. En el corrimiento con 20,545 fotografías, se utilizaron 6 épocas y se encontró, contrario a lo que inicialmente se esperaba, que el modelo con la información más básica de sólo RGB dio un accuracy de 0,46 en validación frente a 0.40 en la correspondiente prueba con más información. Desafortunadamente, el corrimiento del modelo con más fotografías redujo el accuracy de validación a niveles de 0,3.
+En la implementación de resnet50 se modificó la capa de entrada y la de salida ya que el tamaño de las imágenes eran de 512 x 512 pixeles y las clases a clasificar eran 9, posteriormente, cargamos el modelo resnet50 indicándole que excluyera la capa top y cargara los pesos de entrenamiento del dataset de imagenet, asi mismo, utilizamos dos técnicas de regularización dropout y batch standardization. En la primera y segunda iteración le indicamos al modelo que no utilizara los pesos de entrenamiento del dataset de imagenet en las últimas 10 capas de la arquitectura, variando de 50 y 25 épocas de entrenamiento del modelo. El resultado no fue el esperado ya que se presentó un sobre ajuste en el modelo y un accuracy muy bajo en su validación. En la tercera y cuarta iteración le indicamos al modelo que utilizara todos los pesos de entrenamiento donde se evidencia que mejoró el sobre ajuste del modelo, pero el accuracy de validación solo logramos llegar a un 40 % en la predicción
+También utilizamos la red Mobilenet donde no realizamos transfer learning ya que esta se basa en una arquitectura racionalizada que utiliza convoluciones separables en profundidad para construir redes neuronales profundas de poco peso. Al entrenar el modelo con la arquitectura de Mobilenet nos dimos cuenta de que los datos se ajustaron más al modelo evitando sobre ajuste y accuracy por encima del 60 % de predicción, esto se debe al tipo de imágenes con características especiales utilizadas en el entrenamiento del modelo.
